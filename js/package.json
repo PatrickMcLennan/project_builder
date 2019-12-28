@@ -1,0 +1,25 @@
+{
+  "name": "js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "project_builder.js",
+  "scripts": {
+    "tsc": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^3.0.0",
+    "cli-progress": "^3.4.0",
+    "enquirer": "^2.3.2",
+    "figlet": "^1.2.4",
+    "inquirer": "^7.0.1",
+    "prompt-radio": "^1.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^13.1.1",
+    "tsc": "^1.20150623.0",
+    "typescript": "^3.7.4"
+  }
+}

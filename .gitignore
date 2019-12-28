@@ -1,0 +1,5 @@
+/target
+**/*.rs.bk
+/js/node_modules
+/python/bin
+/python/lib

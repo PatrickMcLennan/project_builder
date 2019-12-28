@@ -1,0 +1,30 @@
+{
+  "name": "js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "project_builder.js",
+  "scripts": {
+    "babel": "babel -w './es6/js' -o './app.js' --presets=@babel/preset-env",
+    "eslint": "eslint './es6.js'",
+    "minify-html": "html-minifier --collapse-whitespace --remove-comments --remove-tag-whitespace './index.html'",
+    "minify-js": "uglifyjs './app.js' -c -m -o './app.js'",
+    "prefix": "postcss './style.css' -o './style.css' -u autoprefixer cssnano",
+    "watch": "concurrently 'npm run babel' 'npm run eslint'",
+    "build": "concurrently 'npm run minify-html' 'npm run prefix' 'npm run minify-js'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.5.5.",
+    "@babel/core": "^7.5.5.",
+    "@babel/preset-env": "^7.5.5.",
+    "concurrently": "^4.1.1",
+    "css-nano": "^4.1.10",
+    "eslint": "^6.1.0",
+    "html-minifier": "^4.0.0",
+    "postcss": "^7.0.17",
+    "postcss-cli": "^6.1.3",
+    "uglify-js": "^3.6.0"
+  }
+}
