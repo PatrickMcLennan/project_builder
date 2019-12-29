@@ -46,13 +46,35 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
+var __spread = (this && this.__spread) || function () {
+    for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
+    return ar;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
 var chalk = require("chalk");
 var figlet = require("figlet");
 var path = require("path");
 var fs = require("fs");
 var Radio = require("prompt-radio");
 var prompt = require("enquirer").prompt;
-var PATH = process.cwd();
+var spawn = require("child_process").spawn;
+var cliProgress = require("cli-progress");
 /* * * * * * * *
  * - CHOICES - *
  * * * * * * * */
@@ -96,7 +118,7 @@ var express = new Radio({
     message: "Express?",
     choices: ["Ya", "Nah"]
 });
-var getName = prompt({
+var projectName = prompt({
     type: "input",
     name: "name",
     message: "Projects Name?"
@@ -104,15 +126,6 @@ var getName = prompt({
 /* * * * * * * * *
  * - FUNCTIONS - *
  * * * * * * * * */
-var newConfig = function (key) {
-    var _a;
-    return __assign(__assign({}, config), (_a = {}, _a[key] = !config[key], _a));
-};
-var askQuestion = function (question) {
-    var answer = question.ask(function (answer) { return answer; });
-    config = newConfig(answer);
-    return answer;
-};
 var copyFile = function (blueprintPath, projectsName) {
     return fs.copyFile(blueprintPath, projectsName, function (err) {
         if (err) {
@@ -123,8 +136,13 @@ var copyFile = function (blueprintPath, projectsName) {
         }
     });
 };
+var createLoaders = function (numberOfLoaders) {
+    return __spread(Array(numberOfLoaders).keys()).map(function (_number) {
+        return new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+    });
+};
 var makeDir = function (projectsName) {
-    return fs.mkdir(PATH + "/" + projectsName, function (err) {
+    return fs.mkdir("" + path.join(__dirname, projectsName), function (err) {
         if (err) {
             throw new Error("There was an issue creating the " + projectsName + " Directory");
         }
@@ -133,6 +151,13 @@ var makeDir = function (projectsName) {
         }
     });
 };
+var newConfig = function (key) {
+    var _a;
+    return __assign(__assign({}, config), (_a = {}, _a[key] = !config[key], _a));
+};
+/* * * * * * * *
+ * - RUNTIME - *
+ * * * * * * * */
 figlet("Project Builder", function (err, project_builder) {
     if (err) {
         console.error("Weird - the logo isn't working.  The CLI should be fine though.");
@@ -156,46 +181,96 @@ figlet("Project Builder", function (err, project_builder) {
                             config = newConfig(answer);
                             feTesting.ask(function (answer) {
                                 config = newConfig(answer === "Ya" ? "feTesting" : "burner");
-                                config = newConfig(prompt({
-                                    type: "input",
-                                    name: "name",
-                                    message: "Projects Name?"
-                                }));
                             });
                         });
                     }
                     else if (config["Vanilla F/E"]) {
-                        config = newConfig(prompt({
-                            type: "input",
-                            name: "name",
-                            message: "Projects Name?"
-                        }));
                     }
                 }
             });
         }
         else if (answer === "Python") {
-            getName
-                .then(function (name) { return __awaiter(void 0, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            name = name.trim();
-                            return [4 /*yield*/, makeDir(name)];
-                        case 1:
-                            _a.sent();
-                            //   process.chdir(name);
-                            return [4 /*yield*/, copyFile("/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py", name)];
-                        case 2:
-                            //   process.chdir(name);
-                            _a.sent();
-                            return [2 /*return*/];
-                    }
+            /* * * * * * * *
+             * - PYTHON -  *
+             * * * * * * * */
+            var getName = function () {
+                return projectName.then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+                    var name, _a, directoryBar, copyBar, venvBar, pythonSpawn, venvActivation;
+                    return __generator(this, function (_b) {
+                        switch (_b.label) {
+                            case 0:
+                                name = res.name.trim();
+                                _a = __read(createLoaders(3), 3), directoryBar = _a[0], copyBar = _a[1], venvBar = _a[2];
+                                directoryBar.start(1, 0, {
+                                    speed: "N/A"
+                                });
+                                return [4 /*yield*/, makeDir(name)];
+                            case 1:
+                                _b.sent();
+                                directoryBar.increment();
+                                directoryBar.stop();
+                                copyBar.start(1, 0, {
+                                    speed: "N/A"
+                                });
+                                process.chdir("./" + name);
+                                return [4 /*yield*/, copyFile("/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py", "./" + name + ".py")];
+                            case 2:
+                                _b.sent();
+                                copyBar.increment();
+                                copyBar.stop();
+                                venvBar.start(2, 0, {
+                                    speed: "N/A"
+                                });
+                                pythonSpawn = spawn("python", [
+                                    "-m",
+                                    "venv",
+                                    "./"
+                                ]);
+                                pythonSpawn.on("exit", function (exitStatus) {
+                                    if (exitStatus === 0) {
+                                        venvBar.increment();
+                                    }
+                                    else {
+                                        throw new Error("There was an error creating a venv for " + name + " - project_builder has aborted.  It is recommend you try again.");
+                                    }
+                                });
+                                venvActivation = spawn("bash", [
+                                    "source bin/activate"
+                                ]);
+                                venvActivation.on("exit", function (exitStatus) {
+                                    if (exitStatus === 0) {
+                                        venvBar.increment();
+                                        venvBar.stop();
+                                        return console.log("\n                    \n\n                    Thanks for using project_builder.  " + name + " looks ready to go\n                    \n\n                    A venv has been made and activated.\n                    \n\n                    Have at 'er.\n                    \n");
+                                    }
+                                    else {
+                                        throw new Error("There was an error activating your new venv - everything else seems fine though.");
+                                    }
+                                });
+                                return [2 /*return*/];
+                        }
+                    });
+                }); });
+            };
+            return getName();
+        }
+        else if (answer === "Rust") {
+            /* * * * * * *
+             * - RUST -  *
+             * * * * * * */
+            var getName = function () {
+                projectName
+                    .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+                    var name;
+                    return __generator(this, function (_a) {
+                        name = res.name.trim();
+                        return [2 /*return*/];
+                    });
+                }); })
+                    .catch(function (err) {
+                    throw new Error("There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.");
                 });
-            }); })
-                .catch(function (err) {
-                throw new Error();
-            });
+            };
         }
     });
 });

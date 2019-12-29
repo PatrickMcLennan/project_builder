@@ -1,11 +1,13 @@
+import { ChildProcess } from "child_process";
+
 const chalk = require("chalk");
 const figlet = require("figlet");
 const path = require("path");
 const fs = require("fs");
 const Radio = require("prompt-radio");
 const { prompt } = require("enquirer");
-
-const PATH: string = process.cwd();
+const { spawn } = require("child_process");
+const cliProgress = require("cli-progress");
 
 /* * * * * * * * * *
  * - INTERFACES -  *
@@ -24,6 +26,18 @@ interface IConfig {
   python: boolean;
   rust: boolean;
   name: string;
+}
+
+interface ILoaderBar {
+  start: (stop: number, start: number, options: { speed: string }) => void;
+  stop: () => void;
+  increment: () => void;
+}
+
+interface IPrompt {
+  type: string;
+  name: string;
+  message: string;
 }
 
 interface IRadio {
@@ -82,7 +96,7 @@ const express: IRadio = new Radio({
   choices: ["Ya", "Nah"]
 });
 
-const getName = prompt({
+const projectName: Promise<IPrompt> = prompt({
   type: "input",
   name: "name",
   message: "Projects Name?"
@@ -91,17 +105,11 @@ const getName = prompt({
 /* * * * * * * * *
  * - FUNCTIONS - *
  * * * * * * * * */
-const newConfig: Function = (key: keyof IConfig): IConfig => {
-  return { ...config, [key]: !config[key] };
-};
 
-const askQuestion: Function = (question: IRadio): string => {
-  const answer = question.ask((answer: string) => answer);
-  config = newConfig(answer);
-  return answer;
-};
-
-const copyFile: Function = (blueprintPath: string, projectsName: string) =>
+const copyFile: Function = (
+  blueprintPath: string,
+  projectsName: string
+): boolean | Error =>
   fs.copyFile(blueprintPath, projectsName, (err: Error) => {
     if (err) {
       throw new Error(
@@ -112,8 +120,14 @@ const copyFile: Function = (blueprintPath: string, projectsName: string) =>
     }
   });
 
-const makeDir: Function = (projectsName: string): boolean =>
-  fs.mkdir(`${PATH}/${projectsName}`, (err: Error) => {
+const createLoaders: Function = (numberOfLoaders: number): ILoaderBar[] =>
+  [...Array(numberOfLoaders).keys()].map(
+    (_number: number): ILoaderBar =>
+      new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+  );
+
+const makeDir: Function = (projectsName: string): boolean | Error =>
+  fs.mkdir(`${path.join(__dirname, projectsName)}`, (err: Error) => {
     if (err) {
       throw new Error(
         `There was an issue creating the ${projectsName} Directory`
@@ -123,6 +137,13 @@ const makeDir: Function = (projectsName: string): boolean =>
     }
   });
 
+const newConfig: Function = (key: keyof IConfig): IConfig => {
+  return { ...config, [key]: !config[key] };
+};
+
+/* * * * * * * *
+ * - RUNTIME - *
+ * * * * * * * */
 figlet("Project Builder", (err: Error, project_builder: string) => {
   if (err) {
     console.error(
@@ -152,40 +173,97 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
 
               feTesting.ask((answer: string) => {
                 config = newConfig(answer === "Ya" ? "feTesting" : "burner");
-                config = newConfig(
-                  prompt({
-                    type: "input",
-                    name: "name",
-                    message: "Projects Name?"
-                  })
-                );
               });
             });
           } else if (config["Vanilla F/E"]) {
-            config = newConfig(
-              prompt({
-                type: "input",
-                name: "name",
-                message: "Projects Name?"
-              })
-            );
           }
         }
       });
     } else if (answer === "Python") {
-      getName
-        .then(async (name: string) => {
-          name = name.trim();
+      /* * * * * * * *
+       * - PYTHON -  *
+       * * * * * * * */
+      const getName = () =>
+        projectName.then(async (res: { name: string }) => {
+          const name: string = res.name.trim();
+          const [directoryBar, copyBar, venvBar]: ILoaderBar[] = createLoaders(
+            3
+          );
+          directoryBar.start(1, 0, {
+            speed: "N/A"
+          });
           await makeDir(name);
-          //   process.chdir(name);
+          directoryBar.increment();
+          directoryBar.stop();
+
+          copyBar.start(1, 0, {
+            speed: "N/A"
+          });
+          process.chdir(`./${name}`);
           await copyFile(
             "/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py",
-            name
+            `./${name}.py`
           );
-        })
-        .catch((err: Error) => {
-          throw new Error();
+          copyBar.increment();
+          copyBar.stop();
+          venvBar.start(2, 0, {
+            speed: "N/A"
+          });
+          const pythonSpawn: ChildProcess = spawn("python", [
+            "-m",
+            "venv",
+            "./"
+          ]);
+          pythonSpawn.on("exit", (exitStatus: number) => {
+            if (exitStatus === 0) {
+              venvBar.increment();
+            } else {
+              throw new Error(
+                `There was an error creating a venv for ${name} - project_builder has aborted.  It is recommend you try again.`
+              );
+            }
+          });
+          const venvActivation: ChildProcess = spawn("bash", [
+            "source bin/activate"
+          ]);
+          venvActivation.on("exit", (exitStatus: number) => {
+            if (exitStatus === 0) {
+              venvBar.increment();
+              venvBar.stop();
+
+              return console.log(
+                `
+                    \n
+                    Thanks for using project_builder.  ${name} looks ready to go
+                    \n
+                    A venv has been made and activated.
+                    \n
+                    Have at 'er.
+                    \n`
+              );
+            } else {
+              throw new Error(
+                "There was an error activating your new venv - everything else seems fine though."
+              );
+            }
+          });
         });
+      return getName();
+    } else if (answer === "Rust") {
+      /* * * * * * *
+       * - RUST -  *
+       * * * * * * */
+      const getName: Function = () => {
+        projectName
+          .then(async (res: { name: string }) => {
+            const name: string = res.name.trim();
+          })
+          .catch((err: Error) => {
+            throw new Error(
+              "There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again."
+            );
+          });
+      };
     }
   });
 });

@@ -1,3 +1,5 @@
+#!/Users/patrickmclennan/Documents/project_builder/python/bin/python3
+
 from PyInquirer import prompt
 from pathlib import Path
 from progress.bar import Bar
