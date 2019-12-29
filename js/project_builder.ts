@@ -1,8 +1,11 @@
 const chalk = require("chalk");
 const figlet = require("figlet");
+const path = require("path");
 const fs = require("fs");
 const Radio = require("prompt-radio");
 const { prompt } = require("enquirer");
+
+const PATH: string = process.cwd();
 
 /* * * * * * * * * *
  * - INTERFACES -  *
@@ -79,6 +82,12 @@ const express: IRadio = new Radio({
   choices: ["Ya", "Nah"]
 });
 
+const getName = prompt({
+  type: "input",
+  name: "name",
+  message: "Projects Name?"
+});
+
 /* * * * * * * * *
  * - FUNCTIONS - *
  * * * * * * * * */
@@ -91,6 +100,28 @@ const askQuestion: Function = (question: IRadio): string => {
   config = newConfig(answer);
   return answer;
 };
+
+const copyFile: Function = (blueprintPath: string, projectsName: string) =>
+  fs.copyFile(blueprintPath, projectsName, (err: Error) => {
+    if (err) {
+      throw new Error(
+        `There was an issue copy the blueprint for ${projectsName}`
+      );
+    } else {
+      return true;
+    }
+  });
+
+const makeDir: Function = (projectsName: string): boolean =>
+  fs.mkdir(`${PATH}/${projectsName}`, (err: Error) => {
+    if (err) {
+      throw new Error(
+        `There was an issue creating the ${projectsName} Directory`
+      );
+    } else {
+      return true;
+    }
+  });
 
 figlet("Project Builder", (err: Error, project_builder: string) => {
   if (err) {
@@ -118,6 +149,7 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
           if (config.React) {
             reactStyling.ask((answer: string) => {
               config = newConfig(answer);
+
               feTesting.ask((answer: string) => {
                 config = newConfig(answer === "Ya" ? "feTesting" : "burner");
                 config = newConfig(
@@ -140,6 +172,20 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
           }
         }
       });
+    } else if (answer === "Python") {
+      getName
+        .then(async (name: string) => {
+          name = name.trim();
+          await makeDir(name);
+          //   process.chdir(name);
+          await copyFile(
+            "/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py",
+            name
+          );
+        })
+        .catch((err: Error) => {
+          throw new Error();
+        });
     }
   });
 });

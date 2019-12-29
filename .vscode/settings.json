@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "python/bin/python3"
+  "python.pythonPath": "python/bin/python3",
+  "python.linting.pycodestyleEnabled": true,
+  "pythin.linting.pylintEnabled": true
 }
