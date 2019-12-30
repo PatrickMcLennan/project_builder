@@ -1,9 +1,10 @@
 import { ChildProcess } from "child_process";
-
-const chalk = require("chalk");
-const figlet = require("figlet");
-const path = require("path");
-const fs = require("fs");
+import chalk from "chalk";
+import figlet from "figlet";
+import path from "path";
+import fs from "fs";
+import Radio from "prompt-radio";
+// const fs = require("fs");
 const Radio = require("prompt-radio");
 const { prompt } = require("enquirer");
 const { spawn } = require("child_process");
@@ -113,7 +114,9 @@ const copyFile: Function = (
   fs.copyFile(blueprintPath, projectsName, (err: Error) => {
     if (err) {
       throw new Error(
-        `There was an issue copy the blueprint for ${projectsName}`
+        `
+        There was an issue copying the blueprint for ${projectsName}
+        `
       );
     } else {
       return true;
@@ -126,11 +129,28 @@ const createLoaders: Function = (numberOfLoaders: number): ILoaderBar[] =>
       new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
   );
 
+const errorReport: Function = (err: Error, message: string): Error => {
+  throw new Error(`
+        \n
+        ${chalk.red(message)}
+        \n
+        Message: ${chalk.red(err)}
+        \n
+        ${chalk.red(err)}
+    `);
+};
+
+const finishLoader: Function = (loader: ILoaderBar): void => {
+  loader.increment();
+  return loader.stop();
+};
+
 const makeDir: Function = (projectsName: string): boolean | Error =>
   fs.mkdir(`${path.join(__dirname, projectsName)}`, (err: Error) => {
     if (err) {
-      throw new Error(
-        `There was an issue creating the ${projectsName} Directory`
+      errorReport(
+        `There was an issue creating the ${projectsName} Directory.`,
+        err
       );
     } else {
       return true;
@@ -141,14 +161,19 @@ const newConfig: Function = (key: keyof IConfig): IConfig => {
   return { ...config, [key]: !config[key] };
 };
 
+const spawnErrorListener: Function = (
+  spawnProcess: ChildProcess
+): ChildProcess =>
+  spawnProcess.on("error", (err: Error) =>
+    errorReport(err, `Error listener on a spawn kicking in.`)
+  );
+
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
 figlet("Project Builder", (err: Error, project_builder: string) => {
   if (err) {
-    console.error(
-      "Weird - the logo isn't working.  The CLI should be fine though."
-    );
+    console.log(chalk.blue(project_builder));
   }
   console.log(chalk.blue(project_builder));
   console.log("\n");
@@ -193,56 +218,61 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
             speed: "N/A"
           });
           await makeDir(name);
-          directoryBar.increment();
-          directoryBar.stop();
+          finishLoader(directoryBar);
+          process.chdir(`./${name}`);
 
           copyBar.start(1, 0, {
             speed: "N/A"
           });
-          process.chdir(`./${name}`);
           await copyFile(
-            "/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py",
+            path.resolve(__dirname, "../blueprints/blueprint_python.py"),
             `./${name}.py`
           );
-          copyBar.increment();
-          copyBar.stop();
+          finishLoader(copyBar);
           venvBar.start(2, 0, {
             speed: "N/A"
           });
-          const pythonSpawn: ChildProcess = spawn("python", [
+
+          // Create venv
+          const pythonSpawn: ChildProcess = spawn("python3", [
             "-m",
             "venv",
             "./"
           ]);
-          pythonSpawn.on("exit", (exitStatus: number) => {
+
+          spawnErrorListener(pythonSpawn);
+
+          pythonSpawn.on("close", (exitStatus: number): void | Error => {
             if (exitStatus === 0) {
               venvBar.increment();
             } else {
-              throw new Error(
-                `There was an error creating a venv for ${name} - project_builder has aborted.  It is recommend you try again.`
+              errorReport(
+                exitStatus,
+                `There was an error creating a venv for ${name} - project_builder has aborted.`
               );
             }
           });
-          const venvActivation: ChildProcess = spawn("bash", [
-            "source bin/activate"
-          ]);
-          venvActivation.on("exit", (exitStatus: number) => {
+
+          // Activate venv
+          const venvSpawn: ChildProcess = spawn(["source", "bin/activate"]);
+
+          spawnErrorListener(venvSpawn);
+
+          venvSpawn.on("close", (exitStatus: number): void | Error => {
+            console.log(venvSpawn);
             if (exitStatus === 0) {
-              venvBar.increment();
-              venvBar.stop();
+              finishLoader(venvBar);
 
               return console.log(
                 `
-                    \n
-                    Thanks for using project_builder.  ${name} looks ready to go
-                    \n
-                    A venv has been made and activated.
-                    \n
-                    Have at 'er.
-                    \n`
+                    ${chalk.green(`\n
+                    Thanks for using project_builder.  ${name} looks ready to go. \n
+                    A venv has been made and activated. \n`)}
+                    ${chalk.blue(`Have at 'er. \n`)}`
               );
             } else {
-              throw new Error(
+              errorReport(
+                exitStatus,
                 "There was an error activating your new venv - everything else seems fine though."
               );
             }
@@ -257,13 +287,44 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
         projectName
           .then(async (res: { name: string }) => {
             const name: string = res.name.trim();
+            const cargoLoader: ILoaderBar = createLoaders(1)[0];
+
+            cargoLoader.start(1, 0, {
+              speed: "N/A"
+            });
+            const cargoSpawn: ChildProcess = spawn("bash", [
+              "cargo",
+              "new",
+              `${name}`
+            ]);
+
+            spawnErrorListener(cargoSpawn);
+
+            cargoSpawn.on("exit", (exitStatus: number) => {
+              if (exitStatus === 0) {
+                finishLoader(cargoLoader);
+                console.log(`
+                    \n
+                    ${name} has been created with 'cargo new ${name}'
+                    \n
+                `);
+              } else {
+                errorReport(
+                  exitStatus,
+                  `There was an error running 'cargo new ${name}'`
+                );
+              }
+            });
           })
-          .catch((err: Error) => {
-            throw new Error(
-              "There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again."
-            );
-          });
+          .catch(
+            (err: Error): Error =>
+              errorReport(
+                `There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.`,
+                err
+              )
+          );
       };
+      return getName();
     }
   });
 });

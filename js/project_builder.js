@@ -66,11 +66,15 @@ var __spread = (this && this.__spread) || function () {
     for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
     return ar;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-var chalk = require("chalk");
-var figlet = require("figlet");
-var path = require("path");
-var fs = require("fs");
+var chalk_1 = __importDefault(require("chalk"));
+var figlet_1 = __importDefault(require("figlet"));
+var path_1 = __importDefault(require("path"));
+var fs_1 = __importDefault(require("fs"));
+// const fs = require("fs");
 var Radio = require("prompt-radio");
 var prompt = require("enquirer").prompt;
 var spawn = require("child_process").spawn;
@@ -127,9 +131,9 @@ var projectName = prompt({
  * - FUNCTIONS - *
  * * * * * * * * */
 var copyFile = function (blueprintPath, projectsName) {
-    return fs.copyFile(blueprintPath, projectsName, function (err) {
+    return fs_1.default.copyFile(blueprintPath, projectsName, function (err) {
         if (err) {
-            throw new Error("There was an issue copy the blueprint for " + projectsName);
+            throw new Error("\n        There was an issue copying the blueprint for " + projectsName + "\n        ");
         }
         else {
             return true;
@@ -141,10 +145,17 @@ var createLoaders = function (numberOfLoaders) {
         return new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     });
 };
+var errorReport = function (err, message) {
+    throw new Error("\n        \n\n        " + chalk_1.default.red(message) + "\n        \n\n        Message: " + chalk_1.default.red(err) + "\n        \n\n        " + chalk_1.default.red(err) + "\n    ");
+};
+var finishLoader = function (loader) {
+    loader.increment();
+    return loader.stop();
+};
 var makeDir = function (projectsName) {
-    return fs.mkdir("" + path.join(__dirname, projectsName), function (err) {
+    return fs_1.default.mkdir("" + path_1.default.join(__dirname, projectsName), function (err) {
         if (err) {
-            throw new Error("There was an issue creating the " + projectsName + " Directory");
+            errorReport("There was an issue creating the " + projectsName + " Directory.", err);
         }
         else {
             return true;
@@ -155,14 +166,19 @@ var newConfig = function (key) {
     var _a;
     return __assign(__assign({}, config), (_a = {}, _a[key] = !config[key], _a));
 };
+var spawnErrorListener = function (spawnProcess) {
+    return spawnProcess.on("error", function (err) {
+        return errorReport(err, "Error listener on a spawn kicking in.");
+    });
+};
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
-figlet("Project Builder", function (err, project_builder) {
+figlet_1.default("Project Builder", function (err, project_builder) {
     if (err) {
-        console.error("Weird - the logo isn't working.  The CLI should be fine though.");
+        console.log(chalk_1.default.blue(project_builder));
     }
-    console.log(chalk.blue(project_builder));
+    console.log(chalk_1.default.blue(project_builder));
     console.log("\n");
     language.ask(function (answer) {
         config = newConfig(answer);
@@ -195,7 +211,7 @@ figlet("Project Builder", function (err, project_builder) {
              * * * * * * * */
             var getName = function () {
                 return projectName.then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
-                    var name, _a, directoryBar, copyBar, venvBar, pythonSpawn, venvActivation;
+                    var name, _a, directoryBar, copyBar, venvBar, pythonSpawn, venvSpawn;
                     return __generator(this, function (_b) {
                         switch (_b.label) {
                             case 0:
@@ -207,44 +223,42 @@ figlet("Project Builder", function (err, project_builder) {
                                 return [4 /*yield*/, makeDir(name)];
                             case 1:
                                 _b.sent();
-                                directoryBar.increment();
-                                directoryBar.stop();
+                                finishLoader(directoryBar);
+                                process.chdir("./" + name);
                                 copyBar.start(1, 0, {
                                     speed: "N/A"
                                 });
-                                process.chdir("./" + name);
-                                return [4 /*yield*/, copyFile("/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py", "./" + name + ".py")];
+                                return [4 /*yield*/, copyFile(path_1.default.resolve(__dirname, "../blueprints/blueprint_python.py"), "./" + name + ".py")];
                             case 2:
                                 _b.sent();
-                                copyBar.increment();
-                                copyBar.stop();
+                                finishLoader(copyBar);
                                 venvBar.start(2, 0, {
                                     speed: "N/A"
                                 });
-                                pythonSpawn = spawn("python", [
+                                pythonSpawn = spawn("python3", [
                                     "-m",
                                     "venv",
                                     "./"
                                 ]);
-                                pythonSpawn.on("exit", function (exitStatus) {
+                                spawnErrorListener(pythonSpawn);
+                                pythonSpawn.on("close", function (exitStatus) {
                                     if (exitStatus === 0) {
                                         venvBar.increment();
                                     }
                                     else {
-                                        throw new Error("There was an error creating a venv for " + name + " - project_builder has aborted.  It is recommend you try again.");
+                                        errorReport(exitStatus, "There was an error creating a venv for " + name + " - project_builder has aborted.");
                                     }
                                 });
-                                venvActivation = spawn("bash", [
-                                    "source bin/activate"
-                                ]);
-                                venvActivation.on("exit", function (exitStatus) {
+                                venvSpawn = spawn(["source", "bin/activate"]);
+                                spawnErrorListener(venvSpawn);
+                                venvSpawn.on("close", function (exitStatus) {
+                                    console.log(venvSpawn);
                                     if (exitStatus === 0) {
-                                        venvBar.increment();
-                                        venvBar.stop();
-                                        return console.log("\n                    \n\n                    Thanks for using project_builder.  " + name + " looks ready to go\n                    \n\n                    A venv has been made and activated.\n                    \n\n                    Have at 'er.\n                    \n");
+                                        finishLoader(venvBar);
+                                        return console.log("\n                    " + chalk_1.default.green("\n\n                    Thanks for using project_builder.  " + name + " looks ready to go. \n\n                    A venv has been made and activated. \n") + "\n                    " + chalk_1.default.blue("Have at 'er. \n"));
                                     }
                                     else {
-                                        throw new Error("There was an error activating your new venv - everything else seems fine though.");
+                                        errorReport(exitStatus, "There was an error activating your new venv - everything else seems fine though.");
                                     }
                                 });
                                 return [2 /*return*/];
@@ -261,16 +275,36 @@ figlet("Project Builder", function (err, project_builder) {
             var getName = function () {
                 projectName
                     .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
-                    var name;
+                    var name, cargoLoader, cargoSpawn;
                     return __generator(this, function (_a) {
                         name = res.name.trim();
+                        cargoLoader = createLoaders(1)[0];
+                        cargoLoader.start(1, 0, {
+                            speed: "N/A"
+                        });
+                        cargoSpawn = spawn("bash", [
+                            "cargo",
+                            "new",
+                            "" + name
+                        ]);
+                        spawnErrorListener(cargoSpawn);
+                        cargoSpawn.on("exit", function (exitStatus) {
+                            if (exitStatus === 0) {
+                                finishLoader(cargoLoader);
+                                console.log("\n                    \n\n                    " + name + " has been created with 'cargo new " + name + "'\n                    \n\n                ");
+                            }
+                            else {
+                                errorReport(exitStatus, "There was an error running 'cargo new " + name + "'");
+                            }
+                        });
                         return [2 /*return*/];
                     });
                 }); })
                     .catch(function (err) {
-                    throw new Error("There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.");
+                    return errorReport("There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.", err);
                 });
             };
+            return getName();
         }
     });
 });

@@ -17,13 +17,17 @@ def copy_file(blueprint: str, project_name: str):
     shutil.copy(blueprint, './{name}.py'.format(name=project_name))
 
 
+def error_report(message: str):
+    raise Exception(message)
+
+
 def insert_name(file_name: str, project_name: str):
     file = Path(file_name)
     try:
         all_text = file.read_text().replace('p_b_template', project_name)
         file.write_text(all_text)
     except OSError:
-        print("There was an error reading {file}".format(file=file))
+        error_report("There was an error reading {file}".format(file=file))
 
 
 def install_package(message: str, loader_max: int, executable: str):
@@ -38,7 +42,7 @@ def makeDir(dir_name: str):
     try:
         os.mkdir(dir_name)
     except OSError:
-        print("There was an error creating the {dir} directory".format(
+        error_report("There was an error creating the {dir} directory".format(
             dir=dir_name))
     else:
         print("Successfully created {dir}".format(dir=dir_name))
