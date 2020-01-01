@@ -70,14 +70,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+var child_process_1 = require("child_process");
 var chalk_1 = __importDefault(require("chalk"));
 var figlet_1 = __importDefault(require("figlet"));
 var path_1 = __importDefault(require("path"));
 var fs_1 = __importDefault(require("fs"));
-// const fs = require("fs");
 var Radio = require("prompt-radio");
 var prompt = require("enquirer").prompt;
-var spawn = require("child_process").spawn;
 var cliProgress = require("cli-progress");
 /* * * * * * * *
  * - CHOICES - *
@@ -174,11 +173,11 @@ var spawnErrorListener = function (spawnProcess) {
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
-figlet_1.default("Project Builder", function (err, project_builder) {
+figlet_1.default("Project Builder", function (err, result) {
     if (err) {
-        console.log(chalk_1.default.blue(project_builder));
+        console.log(chalk_1.default.blue(result));
     }
-    console.log(chalk_1.default.blue(project_builder));
+    console.log(chalk_1.default.blue(result));
     console.log("\n");
     language.ask(function (answer) {
         config = newConfig(answer);
@@ -211,7 +210,7 @@ figlet_1.default("Project Builder", function (err, project_builder) {
              * * * * * * * */
             var getName = function () {
                 return projectName.then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
-                    var name, _a, directoryBar, copyBar, venvBar, pythonSpawn, venvSpawn;
+                    var name, _a, directoryBar, copyBar, venvBar, pythonSpawn;
                     return __generator(this, function (_b) {
                         switch (_b.label) {
                             case 0:
@@ -232,33 +231,18 @@ figlet_1.default("Project Builder", function (err, project_builder) {
                             case 2:
                                 _b.sent();
                                 finishLoader(copyBar);
-                                venvBar.start(2, 0, {
+                                venvBar.start(1, 0, {
                                     speed: "N/A"
                                 });
-                                pythonSpawn = spawn("python3", [
-                                    "-m",
-                                    "venv",
-                                    "./"
-                                ]);
+                                pythonSpawn = child_process_1.exec("python3 -m venv ./");
                                 spawnErrorListener(pythonSpawn);
                                 pythonSpawn.on("close", function (exitStatus) {
                                     if (exitStatus === 0) {
-                                        venvBar.increment();
+                                        finishLoader(venvBar);
+                                        return console.log("\n                    " + chalk_1.default.green("\n\n                    Thanks for using project_builder.  " + name + " looks ready to go. \n\n                    A venv has been made - " + chalk_1.default.blue("source bin/activate") + " within " + name + " will fire it up for you. \n") + "\n                    Have at 'er. \n");
                                     }
                                     else {
                                         errorReport(exitStatus, "There was an error creating a venv for " + name + " - project_builder has aborted.");
-                                    }
-                                });
-                                venvSpawn = spawn(["source", "bin/activate"]);
-                                spawnErrorListener(venvSpawn);
-                                venvSpawn.on("close", function (exitStatus) {
-                                    console.log(venvSpawn);
-                                    if (exitStatus === 0) {
-                                        finishLoader(venvBar);
-                                        return console.log("\n                    " + chalk_1.default.green("\n\n                    Thanks for using project_builder.  " + name + " looks ready to go. \n\n                    A venv has been made and activated. \n") + "\n                    " + chalk_1.default.blue("Have at 'er. \n"));
-                                    }
-                                    else {
-                                        errorReport(exitStatus, "There was an error activating your new venv - everything else seems fine though.");
                                     }
                                 });
                                 return [2 /*return*/];
@@ -282,11 +266,7 @@ figlet_1.default("Project Builder", function (err, project_builder) {
                         cargoLoader.start(1, 0, {
                             speed: "N/A"
                         });
-                        cargoSpawn = spawn("bash", [
-                            "cargo",
-                            "new",
-                            "" + name
-                        ]);
+                        cargoSpawn = child_process_1.exec("cargo new " + name);
                         spawnErrorListener(cargoSpawn);
                         cargoSpawn.on("exit", function (exitStatus) {
                             if (exitStatus === 0) {

@@ -63,14 +63,14 @@ questions = [
         'type': 'input',
         'name': 'name',
         'message': 'Projects Name?',
-        'when': lambda answers: answers['language'] == 'Python'
+        'when': lambda answers: answers['language'] == 'Python' or 'Rust'
     },
     {
         'type': 'list',
         'name': 'javascript_type',
         'message': 'Vanilla F/E, React or Node?',
         'choices': ['Vanilla F/E', 'Pug', 'React', 'Node'],
-        'when': lambda answers: answers['language'] == 'TypeScript' or 'JavaScript'
+        'when': lambda answers: answers['language'] != 'Python' or 'Rust'
     },
     {
         'type': 'list',
@@ -91,9 +91,8 @@ questions = [
 answers = prompt(questions)
 
 
-makeDir(answers['name'].strip())
-
 if answers['language'] == 'Python':
+    makeDir(answers['name'].strip())
     os.chdir(answers['name'])
     install_package('Creating a venv...', 1, 'python3 -m venv ./')
     print("\n")
@@ -101,3 +100,7 @@ if answers['language'] == 'Python':
         '/Users/patrickmclennan/Documents/project_builder/blueprints/blueprint_python.py', answers['name'])
     os.system('source bin/activate')
     os.system('python3 ./{file}.py'.format(file=answers['name']))
+
+elif answers['language'] == 'Rust':
+    install_package('Running Cargo new...', 1,
+                    'cargo new {name}'.format(name=answers['name']))

@@ -1,13 +1,10 @@
-import { ChildProcess } from "child_process";
+import { ChildProcess, exec, spawn } from "child_process";
 import chalk from "chalk";
 import figlet from "figlet";
 import path from "path";
 import fs from "fs";
-import Radio from "prompt-radio";
-// const fs = require("fs");
 const Radio = require("prompt-radio");
 const { prompt } = require("enquirer");
-const { spawn } = require("child_process");
 const cliProgress = require("cli-progress");
 
 /* * * * * * * * * *
@@ -110,7 +107,7 @@ const projectName: Promise<IPrompt> = prompt({
 const copyFile: Function = (
   blueprintPath: string,
   projectsName: string
-): boolean | Error =>
+): void =>
   fs.copyFile(blueprintPath, projectsName, (err: Error) => {
     if (err) {
       throw new Error(
@@ -145,7 +142,7 @@ const finishLoader: Function = (loader: ILoaderBar): void => {
   return loader.stop();
 };
 
-const makeDir: Function = (projectsName: string): boolean | Error =>
+const makeDir: Function = (projectsName: string): void =>
   fs.mkdir(`${path.join(__dirname, projectsName)}`, (err: Error) => {
     if (err) {
       errorReport(
@@ -171,11 +168,11 @@ const spawnErrorListener: Function = (
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
-figlet("Project Builder", (err: Error, project_builder: string) => {
+figlet("Project Builder", (err: Error | null, result?: string | undefined) => {
   if (err) {
-    console.log(chalk.blue(project_builder));
+    console.log(chalk.blue(result));
   }
-  console.log(chalk.blue(project_builder));
+  console.log(chalk.blue(result));
   console.log("\n");
 
   language.ask((answer: string) => {
@@ -229,51 +226,30 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
             `./${name}.py`
           );
           finishLoader(copyBar);
-          venvBar.start(2, 0, {
+          venvBar.start(1, 0, {
             speed: "N/A"
           });
 
-          // Create venv
-          const pythonSpawn: ChildProcess = spawn("python3", [
-            "-m",
-            "venv",
-            "./"
-          ]);
+          const pythonSpawn: ChildProcess = exec("python3 -m venv ./");
 
           spawnErrorListener(pythonSpawn);
 
           pythonSpawn.on("close", (exitStatus: number): void | Error => {
             if (exitStatus === 0) {
-              venvBar.increment();
-            } else {
-              errorReport(
-                exitStatus,
-                `There was an error creating a venv for ${name} - project_builder has aborted.`
-              );
-            }
-          });
-
-          // Activate venv
-          const venvSpawn: ChildProcess = spawn(["source", "bin/activate"]);
-
-          spawnErrorListener(venvSpawn);
-
-          venvSpawn.on("close", (exitStatus: number): void | Error => {
-            console.log(venvSpawn);
-            if (exitStatus === 0) {
               finishLoader(venvBar);
-
               return console.log(
                 `
                     ${chalk.green(`\n
                     Thanks for using project_builder.  ${name} looks ready to go. \n
-                    A venv has been made and activated. \n`)}
-                    ${chalk.blue(`Have at 'er. \n`)}`
+                    A venv has been made - ${chalk.blue(
+                      `source bin/activate`
+                    )} within ${name} will fire it up for you. \n`)}
+                    Have at 'er. \n`
               );
             } else {
               errorReport(
                 exitStatus,
-                "There was an error activating your new venv - everything else seems fine though."
+                `There was an error creating a venv for ${name} - project_builder has aborted.`
               );
             }
           });
@@ -292,11 +268,7 @@ figlet("Project Builder", (err: Error, project_builder: string) => {
             cargoLoader.start(1, 0, {
               speed: "N/A"
             });
-            const cargoSpawn: ChildProcess = spawn("bash", [
-              "cargo",
-              "new",
-              `${name}`
-            ]);
+            const cargoSpawn: ChildProcess = exec(`cargo new ${name}`);
 
             spawnErrorListener(cargoSpawn);
 
