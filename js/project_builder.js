@@ -1,15 +1,4 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -89,11 +78,11 @@ var config = {
     Pug: false,
     SCSS: false,
     "styled-components": false,
-    "Vanilla Node": false,
     Express: false,
+    Node: false,
     feTesting: false,
-    python: false,
-    rust: false,
+    Python: false,
+    Rust: false,
     name: ""
 };
 var language = new Radio({
@@ -106,185 +95,233 @@ var frontOrBackEnd = new Radio({
     message: "What Type of Project ?",
     choices: ["Vanilla F/E", "React", "Pug", "Node"]
 });
-var reactStyling = new Radio({
-    name: "reactStyling",
-    message: "SCSS or styled-components?",
-    choices: ["SCSS", "styled-components"]
-});
-var feTesting = new Radio({
-    name: "feTesting",
-    message: "Jest + @testing-library/react ?",
-    choices: ["Ya", "Nah"]
-});
+// const reactStyling: IRadio = new Radio({
+//   name: "reactStyling",
+//   message: "SCSS or styled-components?",
+//   choices: ["SCSS", "styled-components"]
+// }).ask((answer: keyof IConfig): IConfig => newConfig(answer));
+// const feTesting: IRadio = new Radio({
+//   name: "feTesting",
+//   message: "Jest + @testing-library/react ?",
+//   choices: ["Ya", "Nah"]
+// }).ask((answer: keyof IConfig): IConfig => newConfig(answer));
 var express = new Radio({
     name: "express",
     message: "Express?",
     choices: ["Ya", "Nah"]
 });
-var projectName = prompt({
+var promptOptions = {
     type: "input",
     name: "name",
     message: "Projects Name?"
-});
+};
 /* * * * * * * * *
  * - FUNCTIONS - *
  * * * * * * * * */
 var copyFile = function (blueprintPath, projectsName) {
     return fs_1.default.copyFile(blueprintPath, projectsName, function (err) {
-        if (err) {
-            throw new Error("\n        There was an issue copying the blueprint for " + projectsName + "\n        ");
-        }
-        else {
-            return true;
-        }
+        if (err)
+            throw new Error("There was an issue copying the blueprint for " + projectsName);
+        else
+            true;
     });
 };
 var createLoaders = function (numberOfLoaders) {
-    return __spread(Array(numberOfLoaders).keys()).map(function (_number) {
-        return new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-    });
+    return __spread(Array(numberOfLoaders).keys()).map(function (_number) { return new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic); });
 };
 var errorReport = function (err, message) {
-    throw new Error("\n        \n\n        " + chalk_1.default.red(message) + "\n        \n\n        Message: " + chalk_1.default.red(err) + "\n        \n\n        " + chalk_1.default.red(err) + "\n    ");
+    throw new Error("\n " + chalk_1.default.red(message) + "\n        \n\n        Message: " + chalk_1.default.red(err) + "\n        \n\n        " + chalk_1.default.red(err) + "\n    ");
 };
 var finishLoader = function (loader) {
     loader.increment();
     return loader.stop();
 };
+var insertName = function (textToReplace, name) {
+    return fs_1.default.readdir(__dirname, function (err, files) {
+        if (err)
+            errorReport("There was an error trying to insert " + name + " into package.json and index.html", err);
+        files.forEach(function (file) {
+            return fs_1.default.readFile(file, "utf8", function (err, text) {
+                if (err)
+                    errorReport("There was an error trying to insert " + name + " into " + file, err);
+                var lines = text.split(/\r?\n/);
+                lines.forEach(function (line) {
+                    return line.split(" ").forEach(function (word) { return (textToReplace.includes(word) ? name : word); });
+                });
+            });
+        });
+    });
+};
 var makeDir = function (projectsName) {
     return fs_1.default.mkdir("" + path_1.default.join(__dirname, projectsName), function (err) {
-        if (err) {
+        if (err)
             errorReport("There was an issue creating the " + projectsName + " Directory.", err);
-        }
-        else {
+        else
             return true;
-        }
     });
-};
-var newConfig = function (key) {
-    var _a;
-    return __assign(__assign({}, config), (_a = {}, _a[key] = !config[key], _a));
 };
 var spawnErrorListener = function (spawnProcess) {
-    return spawnProcess.on("error", function (err) {
-        return errorReport(err, "Error listener on a spawn kicking in.");
+    return spawnProcess.on("error", function (err) { return errorReport(err, "Error listener on a spawn kicking in."); });
+};
+/* * * * * * * * * * *
+ * - CONSTRUCTION -  *
+ * * * * * * * * * * */
+var buildExpress = function (typescript) {
+    prompt(promptOptions)
+        .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name;
+        return __generator(this, function (_a) {
+            name = res.name.trim();
+            console.log(name, typescript);
+            return [2 /*return*/];
+        });
+    }); })
+        .catch(function (err) { return errorReport("There was an error creating your Express project", err); });
+};
+var buildNode = function (typescript) {
+    prompt(promptOptions)
+        .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name;
+        return __generator(this, function (_a) {
+            name = res.name.trim();
+            return [2 /*return*/, console.log(name, typescript)];
+        });
+    }); })
+        .catch(function (err) { return errorReport("There was an error creating your Node project.", err); });
+};
+var buildPython = function () {
+    return prompt(promptOptions).then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name, _a, directoryBar, copyBar, venvBar, pythonSpawn;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    name = res.name.trim();
+                    _a = __read(createLoaders(3), 3), directoryBar = _a[0], copyBar = _a[1], venvBar = _a[2];
+                    // Make the Directory
+                    directoryBar.start(1, 0, { speed: "N/A" });
+                    return [4 /*yield*/, makeDir(name)];
+                case 1:
+                    _b.sent();
+                    finishLoader(directoryBar);
+                    process.chdir("./" + name);
+                    // Copy the blueprint
+                    copyBar.start(1, 0, { speed: "N/A" });
+                    return [4 /*yield*/, copyFile(path_1.default.resolve(__dirname, "../blueprints/blueprint_python.py"), "./" + name + ".py")];
+                case 2:
+                    _b.sent();
+                    finishLoader(copyBar);
+                    // Install the Venv + exit
+                    venvBar.start(1, 0, { speed: "N/A" });
+                    pythonSpawn = child_process_1.exec("python3 -m venv ./");
+                    spawnErrorListener(pythonSpawn);
+                    pythonSpawn.on("close", function (exitStatus) {
+                        if (exitStatus === 0) {
+                            finishLoader(venvBar);
+                            return console.log("\n            " + chalk_1.default.green("\n\n            Thanks for using project_builder.  " + name + " looks ready to go. \n\n            A venv has been made - " + chalk_1.default.blue("source bin/activate") + " within " + name + " will fire it up for you. \n") + "\n            Have at 'er. \n");
+                        }
+                        else
+                            errorReport(exitStatus, "There was an error creating a venv for " + name + " - project_builder has aborted.");
+                    });
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+};
+var buildRust = function () {
+    return prompt(promptOptions)
+        .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name, cargoLoader, cargoSpawn;
+        return __generator(this, function (_a) {
+            name = res.name.trim();
+            cargoLoader = createLoaders(1)[0];
+            // Fire up Cargo
+            cargoLoader.start(1, 0, { speed: "N/A" });
+            cargoSpawn = child_process_1.exec("cargo new " + name);
+            spawnErrorListener(cargoSpawn);
+            cargoSpawn.on("exit", function (exitStatus) {
+                if (exitStatus === 0) {
+                    finishLoader(cargoLoader);
+                    console.log("\n                \n\n                " + name + " has been created with 'cargo new " + name + "'\n                \n\n            ");
+                }
+                else
+                    errorReport(exitStatus, "There was an error running 'cargo new " + name + "'");
+            });
+            return [2 /*return*/];
+        });
+    }); })
+        .catch(function (err) {
+        return errorReport("There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.", err);
     });
+};
+var buildVanilla = function (typescript) {
+    return prompt(promptOptions)
+        .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name, _a, directoryLoader, filesLoader, npmLoader, filesExec;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    name = res.name.trim();
+                    _a = __read(createLoaders(3), 3), directoryLoader = _a[0], filesLoader = _a[1], npmLoader = _a[2];
+                    directoryLoader.start(1, 0, { speed: "N/A" });
+                    return [4 /*yield*/, makeDir(name)];
+                case 1:
+                    _b.sent();
+                    finishLoader(directoryLoader);
+                    process.chdir(name);
+                    // Move Files
+                    filesLoader.start(1, 0, { speed: "N/A" });
+                    filesExec = child_process_1.exec("cp -r " + __dirname + "/../blueprints/vanilla/" + (typescript ? "ts" : "js") + "/ ./");
+                    spawnErrorListener(filesExec);
+                    filesExec.on("exit", function (exitStatus) {
+                        if (exitStatus === 0) {
+                            finishLoader(filesLoader);
+                            // Install packages
+                            npmLoader.start(1, 0, { speed: "N/A" });
+                            var npmExec = child_process_1.exec("npm install");
+                            spawnErrorListener(npmExec);
+                            npmExec.on("exit", function (exitStatus) {
+                                if (exitStatus === 0) {
+                                    finishLoader(npmLoader);
+                                }
+                                else
+                                    errorReport(exitStatus, "There was an error trying to install all of the packages.");
+                            });
+                        }
+                        else
+                            errorReport("There was an error initializing npm on " + name + " - aborted.  Is it an allowable name on npm?");
+                    });
+                    return [2 /*return*/];
+            }
+        });
+    }); })
+        .catch(function (err) { return errorReport("There was an error creating your Vanilla F/E build.", err); });
 };
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
-figlet_1.default("Project Builder", function (err, result) {
-    if (err) {
-        console.log(chalk_1.default.blue(result));
-    }
-    console.log(chalk_1.default.blue(result));
-    console.log("\n");
-    language.ask(function (answer) {
-        config = newConfig(answer);
-        if (answer === "TypeScript" || answer === "JavaScript") {
-            frontOrBackEnd.ask(function (answer) {
-                config = newConfig(answer);
-                if (answer === "Node") {
-                    config = newConfig(answer);
-                    return express.ask(function (answer) {
-                        config = newConfig(answer);
-                    });
-                }
-                else {
-                    if (config.React) {
-                        reactStyling.ask(function (answer) {
-                            config = newConfig(answer);
-                            feTesting.ask(function (answer) {
-                                config = newConfig(answer === "Ya" ? "feTesting" : "burner");
-                            });
+figlet_1.default("Project Builder", function (err, result) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        if (err)
+            console.log(chalk_1.default.blue(result));
+        console.log(chalk_1.default.blue(result) + " \n");
+        language.ask(function (answer) {
+            if (answer === "TypeScript" || answer === "JavaScript") {
+                var typescript_1 = answer === "TypeScript";
+                frontOrBackEnd.ask(function (answer) {
+                    if (answer === "Node") {
+                        express.ask(function (answer) {
+                            answer === "Ya" ? buildExpress(typescript_1) : buildNode(typescript_1);
                         });
                     }
-                    else if (config["Vanilla F/E"]) {
-                    }
-                }
-            });
-        }
-        else if (answer === "Python") {
-            /* * * * * * * *
-             * - PYTHON -  *
-             * * * * * * * */
-            var getName = function () {
-                return projectName.then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
-                    var name, _a, directoryBar, copyBar, venvBar, pythonSpawn;
-                    return __generator(this, function (_b) {
-                        switch (_b.label) {
-                            case 0:
-                                name = res.name.trim();
-                                _a = __read(createLoaders(3), 3), directoryBar = _a[0], copyBar = _a[1], venvBar = _a[2];
-                                directoryBar.start(1, 0, {
-                                    speed: "N/A"
-                                });
-                                return [4 /*yield*/, makeDir(name)];
-                            case 1:
-                                _b.sent();
-                                finishLoader(directoryBar);
-                                process.chdir("./" + name);
-                                copyBar.start(1, 0, {
-                                    speed: "N/A"
-                                });
-                                return [4 /*yield*/, copyFile(path_1.default.resolve(__dirname, "../blueprints/blueprint_python.py"), "./" + name + ".py")];
-                            case 2:
-                                _b.sent();
-                                finishLoader(copyBar);
-                                venvBar.start(1, 0, {
-                                    speed: "N/A"
-                                });
-                                pythonSpawn = child_process_1.exec("python3 -m venv ./");
-                                spawnErrorListener(pythonSpawn);
-                                pythonSpawn.on("close", function (exitStatus) {
-                                    if (exitStatus === 0) {
-                                        finishLoader(venvBar);
-                                        return console.log("\n                    " + chalk_1.default.green("\n\n                    Thanks for using project_builder.  " + name + " looks ready to go. \n\n                    A venv has been made - " + chalk_1.default.blue("source bin/activate") + " within " + name + " will fire it up for you. \n") + "\n                    Have at 'er. \n");
-                                    }
-                                    else {
-                                        errorReport(exitStatus, "There was an error creating a venv for " + name + " - project_builder has aborted.");
-                                    }
-                                });
-                                return [2 /*return*/];
-                        }
-                    });
-                }); });
-            };
-            return getName();
-        }
-        else if (answer === "Rust") {
-            /* * * * * * *
-             * - RUST -  *
-             * * * * * * */
-            var getName = function () {
-                projectName
-                    .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
-                    var name, cargoLoader, cargoSpawn;
-                    return __generator(this, function (_a) {
-                        name = res.name.trim();
-                        cargoLoader = createLoaders(1)[0];
-                        cargoLoader.start(1, 0, {
-                            speed: "N/A"
-                        });
-                        cargoSpawn = child_process_1.exec("cargo new " + name);
-                        spawnErrorListener(cargoSpawn);
-                        cargoSpawn.on("exit", function (exitStatus) {
-                            if (exitStatus === 0) {
-                                finishLoader(cargoLoader);
-                                console.log("\n                    \n\n                    " + name + " has been created with 'cargo new " + name + "'\n                    \n\n                ");
-                            }
-                            else {
-                                errorReport(exitStatus, "There was an error running 'cargo new " + name + "'");
-                            }
-                        });
-                        return [2 /*return*/];
-                    });
-                }); })
-                    .catch(function (err) {
-                    return errorReport("There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.", err);
+                    else if (answer === "Vanilla F/E")
+                        buildVanilla(typescript_1);
                 });
-            };
-            return getName();
-        }
+            }
+            else if (answer === "Python")
+                buildPython();
+            else if (answer === "Rust")
+                buildRust();
+        });
+        return [2 /*return*/];
     });
-});
+}); });

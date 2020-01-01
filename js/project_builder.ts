@@ -1,8 +1,9 @@
-import { ChildProcess, exec, spawn } from "child_process";
+import { ChildProcess, exec } from "child_process";
 import chalk from "chalk";
 import figlet from "figlet";
 import path from "path";
 import fs from "fs";
+
 const Radio = require("prompt-radio");
 const { prompt } = require("enquirer");
 const cliProgress = require("cli-progress");
@@ -18,11 +19,11 @@ interface IConfig {
   Pug: boolean;
   SCSS: boolean;
   "styled-components": boolean;
-  "Vanilla Node": boolean;
   Express: boolean;
   feTesting: boolean;
-  python: boolean;
-  rust: boolean;
+  Node: boolean;
+  Python: boolean;
+  Rust: boolean;
   name: string;
 }
 
@@ -56,11 +57,11 @@ let config: IConfig = {
   Pug: false,
   SCSS: false,
   "styled-components": false,
-  "Vanilla Node": false,
   Express: false,
+  Node: false,
   feTesting: false,
-  python: false,
-  rust: false,
+  Python: false,
+  Rust: false,
   name: ""
 };
 
@@ -94,42 +95,29 @@ const express: IRadio = new Radio({
   choices: ["Ya", "Nah"]
 });
 
-const projectName: Promise<IPrompt> = prompt({
+const promptOptions: IPrompt = {
   type: "input",
   name: "name",
   message: "Projects Name?"
-});
+};
 
 /* * * * * * * * *
  * - FUNCTIONS - *
  * * * * * * * * */
 
-const copyFile: Function = (
-  blueprintPath: string,
-  projectsName: string
-): void =>
+const copyFile: Function = (blueprintPath: string, projectsName: string): void =>
   fs.copyFile(blueprintPath, projectsName, (err: Error) => {
-    if (err) {
-      throw new Error(
-        `
-        There was an issue copying the blueprint for ${projectsName}
-        `
-      );
-    } else {
-      return true;
-    }
+    if (err) throw new Error(`There was an issue copying the blueprint for ${projectsName}`);
+    else true;
   });
 
 const createLoaders: Function = (numberOfLoaders: number): ILoaderBar[] =>
   [...Array(numberOfLoaders).keys()].map(
-    (_number: number): ILoaderBar =>
-      new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+    (_number: number): ILoaderBar => new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
   );
 
 const errorReport: Function = (err: Error, message: string): Error => {
-  throw new Error(`
-        \n
-        ${chalk.red(message)}
+  throw new Error(`\n ${chalk.red(message)}
         \n
         Message: ${chalk.red(err)}
         \n
@@ -142,161 +130,208 @@ const finishLoader: Function = (loader: ILoaderBar): void => {
   return loader.stop();
 };
 
-const makeDir: Function = (projectsName: string): void =>
-  fs.mkdir(`${path.join(__dirname, projectsName)}`, (err: Error) => {
-    if (err) {
-      errorReport(
-        `There was an issue creating the ${projectsName} Directory.`,
-        err
-      );
-    } else {
-      return true;
-    }
+const insertName: Function = (textToReplace: string[], name: string): void =>
+  fs.readdir(__dirname, (err: Error, files: string[]): void => {
+    if (err) errorReport(`There was an error trying to insert ${name} into package.json and index.html`, err);
+    files.forEach((file: string) =>
+      fs.readFile(file, "utf8", (err: Error, text: string): void => {
+        if (err) errorReport(`There was an error trying to insert ${name} into ${file}`, err);
+        const lines: string[] = text.split(/\r?\n/);
+        lines.forEach((line: string): void =>
+          line.split(" ").forEach((word: string): string => (textToReplace.includes(word) ? name : word))
+        );
+      })
+    );
   });
 
-const newConfig: Function = (key: keyof IConfig): IConfig => {
-  return { ...config, [key]: !config[key] };
-};
+const makeDir: Function = (projectsName: string): void =>
+  fs.mkdir(`${path.join(__dirname, projectsName)}`, (err: Error) => {
+    if (err) errorReport(`There was an issue creating the ${projectsName} Directory.`, err);
+    else return true;
+  });
 
-const spawnErrorListener: Function = (
-  spawnProcess: ChildProcess
-): ChildProcess =>
-  spawnProcess.on("error", (err: Error) =>
-    errorReport(err, `Error listener on a spawn kicking in.`)
-  );
+const spawnErrorListener: Function = (spawnProcess: ChildProcess): ChildProcess =>
+  spawnProcess.on("error", (err: Error) => errorReport(err, `Error listener on a spawn kicking in.`));
+
+/* * * * * * * * * * *
+ * - CONSTRUCTION -  *
+ * * * * * * * * * * */
+
+const buildExpress: Function = (typescript: boolean): void =>
+  prompt(promptOptions)
+    .then(async (res: { name: string }) => {
+      const name: string = res.name.trim();
+      console.log(name, typescript);
+    })
+    .catch((err: Error): Error => errorReport(`There was an error creating your Express project`, err));
+
+const buildNode: Function = (typescript: boolean): void =>
+  prompt(promptOptions)
+    .then(async (res: { name: string }) => {
+      const name: string = res.name.trim();
+      return console.log(name, typescript);
+    })
+    .catch((err: Error): Error => errorReport(`There was an error creating your Node project.`, err));
+
+const buildPython: Function = (): Promise<void> =>
+  prompt(promptOptions).then(async (res: { name: string }) => {
+    const name: string = res.name.trim();
+    const [directoryBar, copyBar, venvBar]: ILoaderBar[] = createLoaders(3);
+
+    // Make the Directory
+    directoryBar.start(1, 0, { speed: "N/A" });
+    await makeDir(name);
+    finishLoader(directoryBar);
+    process.chdir(`./${name}`);
+
+    // Copy the blueprint
+    copyBar.start(1, 0, { speed: "N/A" });
+    await copyFile(path.resolve(__dirname, "../blueprints/blueprint_python.py"), `./${name}.py`);
+    finishLoader(copyBar);
+
+    // Install the Venv + exit
+    venvBar.start(1, 0, { speed: "N/A" });
+    const pythonSpawn: ChildProcess = exec("python3 -m venv ./");
+    spawnErrorListener(pythonSpawn);
+    pythonSpawn.on("close", (exitStatus: number): void | Error => {
+      if (exitStatus === 0) {
+        finishLoader(venvBar);
+        return console.log(
+          `
+            ${chalk.green(`\n
+            Thanks for using project_builder.  ${name} looks ready to go. \n
+            A venv has been made - ${chalk.blue(
+              `source bin/activate`
+            )} within ${name} will fire it up for you. \n`)}
+            Have at 'er. \n`
+        );
+      } else
+        errorReport(
+          exitStatus,
+          `There was an error creating a venv for ${name} - project_builder has aborted.`
+        );
+    });
+  });
+
+const buildReact: Function = (
+  typescript: boolean,
+  styledComponents: boolean,
+  feTesting: boolean
+): Promise<void | Error> =>
+  prompt(promptOptions)
+    .then(async (res: { name: string }) => {
+      const name: string = res.name.trim();
+      const [directoryLoader, filesLoader, npmLoader]: ILoaderBar[] = createLoaders(3);
+
+      directoryLoader.start(1, 0, { speed: "N/A" });
+      await makeDir(name);
+      finishLoader(directoryLoader);
+      process.chdir(name);
+    })
+    .catch((err: Error): Error => errorReport(err, `There was an error trying to build your React project.`));
+
+const buildRust: Function = (): Promise<void | Error> =>
+  prompt(promptOptions)
+    .then(async (res: { name: string }) => {
+      const name: string = res.name.trim();
+      const cargoLoader: ILoaderBar = createLoaders(1)[0];
+
+      // Fire up Cargo
+      cargoLoader.start(1, 0, { speed: "N/A" });
+      const cargoSpawn: ChildProcess = exec(`cargo new ${name}`);
+      spawnErrorListener(cargoSpawn);
+      cargoSpawn.on("exit", (exitStatus: number): void | Error => {
+        if (exitStatus === 0) {
+          finishLoader(cargoLoader);
+          console.log(`
+                \n
+                ${name} has been created with 'cargo new ${name}'
+                \n
+            `);
+        } else errorReport(exitStatus, `There was an error running 'cargo new ${name}'`);
+      });
+    })
+    .catch(
+      (err: Error): Error =>
+        errorReport(
+          `There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.`,
+          err
+        )
+    );
+
+const buildVanilla: Function = (typescript: boolean): Promise<void | Error> =>
+  prompt(promptOptions)
+    .then(async (res: { name: string }) => {
+      const name: string = res.name.trim();
+      const [directoryLoader, filesLoader, npmLoader]: ILoaderBar[] = createLoaders(3);
+
+      // Create Directory, cd
+      directoryLoader.start(1, 0, { speed: "N/A" });
+      await makeDir(name);
+      finishLoader(directoryLoader);
+      process.chdir(name);
+
+      // Copy Blueprints into Dir
+      filesLoader.start(1, 0, { speed: "N/A" });
+      const filesExec: ChildProcess = exec(
+        `cp -r ${__dirname}/../blueprints/vanilla/${typescript ? "ts" : "js"}/ ./`
+      );
+      spawnErrorListener(filesExec);
+      filesExec.on("exit", (exitStatus: number): void | Error => {
+        if (exitStatus === 0) {
+          finishLoader(filesLoader);
+
+          // Install packages, exit
+          npmLoader.start(1, 0, { speed: "N/A" });
+          const npmExec: ChildProcess = exec(`npm install`);
+          spawnErrorListener(npmExec);
+          npmExec.on("exit", (exitStatus: number): void | Error => {
+            if (exitStatus === 0) {
+              finishLoader(npmLoader);
+              console.log(
+                `${chalk.green(
+                  name
+                )} is ready for you.  \n  There is a README.md to explain the current set up.  \n ${chalk.blue(
+                  "Happy Hacking!"
+                )}`
+              );
+            } else errorReport(exitStatus, `There was an error trying to install all of the packages.`);
+          });
+        } else
+          errorReport(
+            `There was an error initializing npm on ${name} - aborted.  Is it an allowable name on npm?`
+          );
+      });
+    })
+    .catch((err: Error): Error => errorReport(`There was an error creating your Vanilla F/E build.`, err));
 
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
-figlet("Project Builder", (err: Error | null, result?: string | undefined) => {
-  if (err) {
-    console.log(chalk.blue(result));
-  }
-  console.log(chalk.blue(result));
-  console.log("\n");
+figlet("Project Builder", async (err: Error | null, result?: string | undefined) => {
+  if (err) console.log(chalk.blue(result));
+  console.log(`${chalk.blue(result)} \n`);
 
-  language.ask((answer: string) => {
-    config = newConfig(answer);
-
+  language.ask((answer: keyof IConfig) => {
     if (answer === "TypeScript" || answer === "JavaScript") {
-      frontOrBackEnd.ask((answer: string) => {
-        config = newConfig(answer);
-
+      const typescript: boolean = answer === "TypeScript";
+      frontOrBackEnd.ask((answer: keyof IConfig) => {
         if (answer === "Node") {
-          config = newConfig(answer);
-
-          return express.ask((answer: string) => {
-            config = newConfig(answer);
+          express.ask((answer: string) => {
+            answer === "Ya" ? buildExpress(typescript) : buildNode(typescript);
           });
-        } else {
-          if (config.React) {
-            reactStyling.ask((answer: string) => {
-              config = newConfig(answer);
-
-              feTesting.ask((answer: string) => {
-                config = newConfig(answer === "Ya" ? "feTesting" : "burner");
-              });
+        } else if (answer === "Vanilla F/E") buildVanilla(typescript);
+        else if (answer === "React") {
+          reactStyling.ask((answer: keyof IConfig) => {
+            const styledComponents: boolean = answer === "styled-components";
+            feTesting.ask((answer: string) => {
+              const feTesting = answer === "Ya";
+              return buildReact(typescript, styledComponents, feTesting);
             });
-          } else if (config["Vanilla F/E"]) {
-          }
+          });
         }
       });
-    } else if (answer === "Python") {
-      /* * * * * * * *
-       * - PYTHON -  *
-       * * * * * * * */
-      const getName = () =>
-        projectName.then(async (res: { name: string }) => {
-          const name: string = res.name.trim();
-          const [directoryBar, copyBar, venvBar]: ILoaderBar[] = createLoaders(
-            3
-          );
-          directoryBar.start(1, 0, {
-            speed: "N/A"
-          });
-          await makeDir(name);
-          finishLoader(directoryBar);
-          process.chdir(`./${name}`);
-
-          copyBar.start(1, 0, {
-            speed: "N/A"
-          });
-          await copyFile(
-            path.resolve(__dirname, "../blueprints/blueprint_python.py"),
-            `./${name}.py`
-          );
-          finishLoader(copyBar);
-          venvBar.start(1, 0, {
-            speed: "N/A"
-          });
-
-          const pythonSpawn: ChildProcess = exec("python3 -m venv ./");
-
-          spawnErrorListener(pythonSpawn);
-
-          pythonSpawn.on("close", (exitStatus: number): void | Error => {
-            if (exitStatus === 0) {
-              finishLoader(venvBar);
-              return console.log(
-                `
-                    ${chalk.green(`\n
-                    Thanks for using project_builder.  ${name} looks ready to go. \n
-                    A venv has been made - ${chalk.blue(
-                      `source bin/activate`
-                    )} within ${name} will fire it up for you. \n`)}
-                    Have at 'er. \n`
-              );
-            } else {
-              errorReport(
-                exitStatus,
-                `There was an error creating a venv for ${name} - project_builder has aborted.`
-              );
-            }
-          });
-        });
-      return getName();
-    } else if (answer === "Rust") {
-      /* * * * * * *
-       * - RUST -  *
-       * * * * * * */
-      const getName: Function = () => {
-        projectName
-          .then(async (res: { name: string }) => {
-            const name: string = res.name.trim();
-            const cargoLoader: ILoaderBar = createLoaders(1)[0];
-
-            cargoLoader.start(1, 0, {
-              speed: "N/A"
-            });
-            const cargoSpawn: ChildProcess = exec(`cargo new ${name}`);
-
-            spawnErrorListener(cargoSpawn);
-
-            cargoSpawn.on("exit", (exitStatus: number) => {
-              if (exitStatus === 0) {
-                finishLoader(cargoLoader);
-                console.log(`
-                    \n
-                    ${name} has been created with 'cargo new ${name}'
-                    \n
-                `);
-              } else {
-                errorReport(
-                  exitStatus,
-                  `There was an error running 'cargo new ${name}'`
-                );
-              }
-            });
-          })
-          .catch(
-            (err: Error): Error =>
-              errorReport(
-                `There was an error creathing the Directory you've asked for - please make sure it is a valid name and try again.`,
-                err
-              )
-          );
-      };
-      return getName();
-    }
+    } else if (answer === "Python") buildPython();
+    else if (answer === "Rust") buildRust();
   });
 });
