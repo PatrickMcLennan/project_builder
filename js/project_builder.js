@@ -95,16 +95,16 @@ var frontOrBackEnd = new Radio({
     message: "What Type of Project ?",
     choices: ["Vanilla F/E", "React", "Pug", "Node"]
 });
-// const reactStyling: IRadio = new Radio({
-//   name: "reactStyling",
-//   message: "SCSS or styled-components?",
-//   choices: ["SCSS", "styled-components"]
-// }).ask((answer: keyof IConfig): IConfig => newConfig(answer));
-// const feTesting: IRadio = new Radio({
-//   name: "feTesting",
-//   message: "Jest + @testing-library/react ?",
-//   choices: ["Ya", "Nah"]
-// }).ask((answer: keyof IConfig): IConfig => newConfig(answer));
+var reactStyling = new Radio({
+    name: "reactStyling",
+    message: "SCSS or styled-components?",
+    choices: ["SCSS", "styled-components"]
+});
+var feTesting = new Radio({
+    name: "feTesting",
+    message: "Jest + @testing-library/react ?",
+    choices: ["Ya", "Nah"]
+});
 var express = new Radio({
     name: "express",
     message: "Express?",
@@ -167,7 +167,7 @@ var spawnErrorListener = function (spawnProcess) {
  * - CONSTRUCTION -  *
  * * * * * * * * * * */
 var buildExpress = function (typescript) {
-    prompt(promptOptions)
+    return prompt(promptOptions)
         .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
         var name;
         return __generator(this, function (_a) {
@@ -179,7 +179,7 @@ var buildExpress = function (typescript) {
         .catch(function (err) { return errorReport("There was an error creating your Express project", err); });
 };
 var buildNode = function (typescript) {
-    prompt(promptOptions)
+    return prompt(promptOptions)
         .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
         var name;
         return __generator(this, function (_a) {
@@ -188,6 +188,51 @@ var buildNode = function (typescript) {
         });
     }); })
         .catch(function (err) { return errorReport("There was an error creating your Node project.", err); });
+};
+var buildPug = function (typescript) {
+    return prompt(promptOptions)
+        .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name, _a, directoryLoader, filesLoader, npmLoader, filesExec;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    name = res.name.trim();
+                    _a = __read(createLoaders(3), 3), directoryLoader = _a[0], filesLoader = _a[1], npmLoader = _a[2];
+                    // Create Directory, cd
+                    directoryLoader.start(1, 0, { speed: "N/A" });
+                    return [4 /*yield*/, makeDir(name)];
+                case 1:
+                    _b.sent();
+                    finishLoader(directoryLoader);
+                    process.chdir(name);
+                    // Copy Blueprints into Dir
+                    filesLoader.start(1, 0, { speed: "N/A" });
+                    filesExec = child_process_1.exec("cp -r " + __dirname + "/../blueprints/pug/" + (typescript ? "ts" : "js") + "/ ./");
+                    spawnErrorListener(filesExec);
+                    filesExec.on("exit", function (exitStatus) {
+                        if (exitStatus === 0) {
+                            finishLoader(filesLoader);
+                            // Install npm packages, exit
+                            npmLoader.start(1, 0, { speed: "N/A" });
+                            var npmExec = child_process_1.exec("npm install");
+                            spawnErrorListener(npmExec);
+                            npmExec.on("exit", function (exitStatus) {
+                                if (exitStatus === 0) {
+                                    finishLoader(npmLoader);
+                                    console.log(chalk_1.default.green(name) + " is ready for you.  \n  There is a README.md to explain the current set up.  \n " + chalk_1.default.blue("Happy Hacking!"));
+                                }
+                                else
+                                    errorReport("There was an issue installing the npm packages for " + name);
+                            });
+                        }
+                        else
+                            errorReport("There was an issue copying the blueprint files into " + name, exitStatus);
+                    });
+                    return [2 /*return*/];
+            }
+        });
+    }); })
+        .catch(function (err) { return errorReport("There was an error creating your Pug Project", err); });
 };
 var buildPython = function () {
     return prompt(promptOptions).then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -227,6 +272,27 @@ var buildPython = function () {
         });
     }); });
 };
+var buildReact = function (typescript, styledComponents, feTesting) {
+    return prompt(promptOptions)
+        .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
+        var name, _a, directoryLoader, filesLoader, npmLoader;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    name = res.name.trim();
+                    _a = __read(createLoaders(3), 3), directoryLoader = _a[0], filesLoader = _a[1], npmLoader = _a[2];
+                    directoryLoader.start(1, 0, { speed: "N/A" });
+                    return [4 /*yield*/, makeDir(name)];
+                case 1:
+                    _b.sent();
+                    finishLoader(directoryLoader);
+                    process.chdir(name);
+                    return [2 /*return*/];
+            }
+        });
+    }); })
+        .catch(function (err) { return errorReport(err, "There was an error trying to build your React project."); });
+};
 var buildRust = function () {
     return prompt(promptOptions)
         .then(function (res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -262,26 +328,28 @@ var buildVanilla = function (typescript) {
                 case 0:
                     name = res.name.trim();
                     _a = __read(createLoaders(3), 3), directoryLoader = _a[0], filesLoader = _a[1], npmLoader = _a[2];
+                    // Create Directory, cd
                     directoryLoader.start(1, 0, { speed: "N/A" });
                     return [4 /*yield*/, makeDir(name)];
                 case 1:
                     _b.sent();
                     finishLoader(directoryLoader);
                     process.chdir(name);
-                    // Move Files
+                    // Copy Blueprints into Dir
                     filesLoader.start(1, 0, { speed: "N/A" });
                     filesExec = child_process_1.exec("cp -r " + __dirname + "/../blueprints/vanilla/" + (typescript ? "ts" : "js") + "/ ./");
                     spawnErrorListener(filesExec);
                     filesExec.on("exit", function (exitStatus) {
                         if (exitStatus === 0) {
                             finishLoader(filesLoader);
-                            // Install packages
+                            // Install packages, exit
                             npmLoader.start(1, 0, { speed: "N/A" });
                             var npmExec = child_process_1.exec("npm install");
                             spawnErrorListener(npmExec);
                             npmExec.on("exit", function (exitStatus) {
                                 if (exitStatus === 0) {
                                     finishLoader(npmLoader);
+                                    console.log(chalk_1.default.green(name) + " is ready for you.  \n  There is a README.md to explain the current set up.  \n " + chalk_1.default.blue("Happy Hacking!"));
                                 }
                                 else
                                     errorReport(exitStatus, "There was an error trying to install all of the packages.");
@@ -315,6 +383,17 @@ figlet_1.default("Project Builder", function (err, result) { return __awaiter(vo
                     }
                     else if (answer === "Vanilla F/E")
                         buildVanilla(typescript_1);
+                    else if (answer === "Pug")
+                        buildPug(typescript_1);
+                    else if (answer === "React") {
+                        reactStyling.ask(function (answer) {
+                            var styledComponents = answer === "styled-components";
+                            feTesting.ask(function (answer) {
+                                var feTesting = answer === "Ya";
+                                return buildReact(typescript_1, styledComponents, feTesting);
+                            });
+                        });
+                    }
                 });
             }
             else if (answer === "Python")

@@ -173,6 +173,49 @@ const buildNode: Function = (typescript: boolean): void =>
     })
     .catch((err: Error): Error => errorReport(`There was an error creating your Node project.`, err));
 
+const buildPug: Function = (typescript: boolean): void =>
+  prompt(promptOptions)
+    .then(async (res: { name: string }) => {
+      const name: string = res.name.trim();
+      const [directoryLoader, filesLoader, npmLoader]: ILoaderBar[] = createLoaders(3);
+
+      // Create Directory, cd
+      directoryLoader.start(1, 0, { speed: "N/A" });
+      await makeDir(name);
+      finishLoader(directoryLoader);
+      process.chdir(name);
+
+      // Copy Blueprints into Dir
+      filesLoader.start(1, 0, { speed: "N/A" });
+      const filesExec: ChildProcess = exec(
+        `cp -r ${__dirname}/../blueprints/pug/${typescript ? "ts" : "js"}/ ./`
+      );
+      spawnErrorListener(filesExec);
+      filesExec.on("exit", (exitStatus: number): void | Error => {
+        if (exitStatus === 0) {
+          finishLoader(filesLoader);
+
+          // Install npm packages, exit
+          npmLoader.start(1, 0, { speed: "N/A" });
+          const npmExec: ChildProcess = exec(`npm install`);
+          spawnErrorListener(npmExec);
+          npmExec.on("exit", (exitStatus: number): void | Error => {
+            if (exitStatus === 0) {
+              finishLoader(npmLoader);
+              console.log(
+                `${chalk.green(
+                  name
+                )} is ready for you.  \n  There is a README.md to explain the current set up.  \n ${chalk.blue(
+                  "Happy Hacking!"
+                )}`
+              );
+            } else errorReport(`There was an issue installing the npm packages for ${name}`);
+          });
+        } else errorReport(`There was an issue copying the blueprint files into ${name}`, exitStatus);
+      });
+    })
+    .catch((err: Error): Error => errorReport(`There was an error creating your Pug Project`, err));
+
 const buildPython: Function = (): Promise<void> =>
   prompt(promptOptions).then(async (res: { name: string }) => {
     const name: string = res.name.trim();
@@ -308,6 +351,7 @@ const buildVanilla: Function = (typescript: boolean): Promise<void | Error> =>
 /* * * * * * * *
  * - RUNTIME - *
  * * * * * * * */
+
 figlet("Project Builder", async (err: Error | null, result?: string | undefined) => {
   if (err) console.log(chalk.blue(result));
   console.log(`${chalk.blue(result)} \n`);
@@ -321,11 +365,12 @@ figlet("Project Builder", async (err: Error | null, result?: string | undefined)
             answer === "Ya" ? buildExpress(typescript) : buildNode(typescript);
           });
         } else if (answer === "Vanilla F/E") buildVanilla(typescript);
+        else if (answer === "Pug") buildPug(typescript);
         else if (answer === "React") {
           reactStyling.ask((answer: keyof IConfig) => {
             const styledComponents: boolean = answer === "styled-components";
             feTesting.ask((answer: string) => {
-              const feTesting = answer === "Ya";
+              const feTesting: boolean = answer === "Ya";
               return buildReact(typescript, styledComponents, feTesting);
             });
           });
