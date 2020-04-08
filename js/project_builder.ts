@@ -187,9 +187,7 @@ const buildPug: Function = (typescript: boolean): void =>
 
       // Copy Blueprints into Dir
       filesLoader.start(1, 0, { speed: "N/A" });
-      const filesExec: ChildProcess = exec(
-        `cp -r ${__dirname}/../blueprints/pug/${typescript ? "ts" : "js"}/ ./`
-      );
+      const filesExec: ChildProcess = exec(`cp -r ${__dirname}/../blueprints/pug/${typescript ? "ts" : "js"}/ ./`);
       spawnErrorListener(filesExec);
       filesExec.on("exit", (exitStatus: number): void | Error => {
         if (exitStatus === 0) {
@@ -243,16 +241,10 @@ const buildPython: Function = (): Promise<void> =>
           `
             ${chalk.green(`\n
             Thanks for using project_builder.  ${name} looks ready to go. \n
-            A venv has been made - ${chalk.blue(
-              `source bin/activate`
-            )} within ${name} will fire it up for you. \n`)}
+            A venv has been made - ${chalk.blue(`source bin/activate`)} within ${name} will fire it up for you. \n`)}
             Have at 'er. \n`
         );
-      } else
-        errorReport(
-          exitStatus,
-          `There was an error creating a venv for ${name} - project_builder has aborted.`
-        );
+      } else errorReport(exitStatus, `There was an error creating a venv for ${name} - project_builder has aborted.`);
     });
   });
 
@@ -316,9 +308,7 @@ const buildVanilla: Function = (typescript: boolean): Promise<void | Error> =>
 
       // Copy Blueprints into Dir
       filesLoader.start(1, 0, { speed: "N/A" });
-      const filesExec: ChildProcess = exec(
-        `cp -r ${__dirname}/../blueprints/vanilla/${typescript ? "ts" : "js"}/ ./`
-      );
+      const filesExec: ChildProcess = exec(`cp -r ${__dirname}/../blueprints/vanilla/${typescript ? "ts" : "js"}/ ./`);
       spawnErrorListener(filesExec);
       filesExec.on("exit", (exitStatus: number): void | Error => {
         if (exitStatus === 0) {
@@ -341,9 +331,7 @@ const buildVanilla: Function = (typescript: boolean): Promise<void | Error> =>
             } else errorReport(exitStatus, `There was an error trying to install all of the packages.`);
           });
         } else
-          errorReport(
-            `There was an error initializing npm on ${name} - aborted.  Is it an allowable name on npm?`
-          );
+          errorReport(`There was an error initializing npm on ${name} - aborted.  Is it an allowable name on npm?`);
       });
     })
     .catch((err: Error): Error => errorReport(`There was an error creating your Vanilla F/E build.`, err));
@@ -356,27 +344,30 @@ figlet("Project Builder", async (err: Error | null, result?: string | undefined)
   if (err) console.log(chalk.blue(result));
   console.log(`${chalk.blue(result)} \n`);
 
-  language.ask((answer: keyof IConfig) => {
-    if (answer === "TypeScript" || answer === "JavaScript") {
-      const typescript: boolean = answer === "TypeScript";
-      frontOrBackEnd.ask((answer: keyof IConfig) => {
-        if (answer === "Node") {
+  language.ask((language: keyof IConfig) => {
+    if (language === "Python") return buildPython();
+    if (language === "Rust") return buildRust();
+
+    if (language === "TypeScript" || language === "JavaScript") {
+      const typescript: boolean = language === "TypeScript";
+      frontOrBackEnd.ask((frontOrBackEnd: keyof IConfig) => {
+        if (frontOrBackEnd === "Node") {
           express.ask((answer: string) => {
-            answer === "Ya" ? buildExpress(typescript) : buildNode(typescript);
+            return answer === "Ya" ? buildExpress(typescript) : buildNode(typescript);
           });
-        } else if (answer === "Vanilla F/E") buildVanilla(typescript);
-        else if (answer === "Pug") buildPug(typescript);
-        else if (answer === "React") {
-          reactStyling.ask((answer: keyof IConfig) => {
-            const styledComponents: boolean = answer === "styled-components";
-            feTesting.ask((answer: string) => {
-              const feTesting: boolean = answer === "Ya";
+        }
+        if (frontOrBackEnd === "Vanilla F/E") return buildVanilla(typescript);
+        if (frontOrBackEnd === "Pug") return buildPug(typescript);
+        if (frontOrBackEnd === "React") {
+          reactStyling.ask((reactStyling: keyof IConfig) => {
+            const styledComponents: boolean = reactStyling === "styled-components";
+            feTesting.ask((feTestingAsk: string) => {
+              const feTesting: boolean = feTestingAsk === "Ya";
               return buildReact(typescript, styledComponents, feTesting);
             });
           });
         }
       });
-    } else if (answer === "Python") buildPython();
-    else if (answer === "Rust") buildRust();
+    }
   });
 });

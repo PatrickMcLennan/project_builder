@@ -1,0 +1,10 @@
+// - IMPORT ALL OF YOUR SCSS FILES HERE IN THEIR APPROPRIATE ORDER - //
+
+@mixin media($width) {
+  @media (max-width: #{$width}px) {
+    @content;
+  }
+}
+
+@import "./utils/styleUtils/basic-resets.scss";
+@import "./utils/styleUtils/variables.scss";

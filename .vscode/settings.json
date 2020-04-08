@@ -1,5 +1,6 @@
 {
   "python.pythonPath": "python/bin/python3",
   "python.linting.pycodestyleEnabled": true,
-  "pythin.linting.pylintEnabled": true
+"pythin.linting.pylintEnabled": true,
+"prettier.printWidth": 120
 }
